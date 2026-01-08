@@ -226,6 +226,29 @@ jobs:
           echo "🏗️ Building latest version (no version snapshot needed)"
         fi
 
+    - name: Fix versioned docs relative imports
+      run: |
+        cd "${{ env.TEMP_DIR }}/llama-stack/docs"
+
+        echo "🔧 Fixing relative imports in versioned docs..."
+
+        # Universal fix: Replace any raw-loader relative imports that go up to repo root
+        # This handles any depth by using regex pattern matching
+        if [ -d "versioned_docs" ]; then
+          find versioned_docs -name "*.mdx" -type f \
+            -exec grep -l "!!raw-loader!\.\." {} \; | \
+            while read file; do
+              echo "Fixing raw-loader imports in $file"
+              # Use perl for more sophisticated regex replacement
+              # Pattern: !!raw-loader! followed by any number of ../ then a filename
+              # Replace with absolute path to repo root + filename
+              perl -i -pe "s|!!raw-loader!(\.\.\/)+([^'\"]*)|!!raw-loader!${{ env.TEMP_DIR }}/llama-stack/\$2|g" "$file"
+            done
+          echo "✅ Versioned docs import paths corrected"
+        else
+          echo "ℹ️ No versioned docs found"
+        fi
+
     - name: Build Docusaurus site
       run: |
         echo "🏗️ Building Docusaurus site..."
